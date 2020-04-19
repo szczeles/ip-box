@@ -93,7 +93,7 @@ class MultiProjectReportWriter:
         self.ipbox_hours = defaultdict(float)
 
     def get_path(self, project):
-        return f'{self.base_path}/{project}.csv'
+        return f'{self.base_path}/Harvest {project}.csv'
 
     def write(self, entry):
         if not entry.project in self.writers:
