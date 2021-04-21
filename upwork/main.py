@@ -68,7 +68,7 @@ class UpworkTimeEntriesProvider:
         end_date = f'{month}-{calendar.monthrange(int(month[:4]), int(month[5:7]))[1]}'
 
         for invoice in self.get_invoices(start_date, end_date):
-            if invoice.subtype == 'Fixed Price':
+            if invoice.subtype in ('Fixed Price', 'Miscellaneous'):
                 print("Fixed price invoice ", invoice)
                 continue
 
