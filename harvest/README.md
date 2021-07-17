@@ -4,8 +4,9 @@ Downloads Harvest time entries for a given month. Classifies entries
 as IP Box applicable (or not!) and saves the detailed report to be used
 durign the audit. At the ends prints sum of IP Box hours per project.
 
-Classifier checks for time entry type of Development, so make sure they 
-are the ones that match IP Box rules!
+Classifier checks by default for time entry type of Development, so make sure they 
+are the ones that match IP Box rules! 
+You can overwrite default IP Box compatible time entry types by providing `--types` parameter.
 
 # Setup
 
