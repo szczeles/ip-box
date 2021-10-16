@@ -121,17 +121,23 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--account', help='Account ID', required=True)
     parser.add_argument('--token', help='Personal token', required=True)
-    parser.add_argument('--month', help='YYYY-MM format', required=True)
+    parser.add_argument('--year', help="YYYY format", required=True)
+    parser.add_argument('--months', help='comma separated list of months in MM format', required=False)
     parser.add_argument('--path', help='Reports path', required=True)
     parser.add_argument('--types', help='Time entry types considered as IP Box compatible',
                         nargs='+', required=False, default=['Development'])
     args = parser.parse_args()
 
     api = HarvestAPI(args.account, args.token)
-    os.makedirs(f'{args.path}/{args.month}', exist_ok=True)
-    ipbox_matcher = IPBoxMatcher(args.types)
-    with MultiProjectReportWriter(f'{args.path}/{args.month}', ipbox_matcher) as writer:
-        for time_entry in api.iterate_time_entries(args.month):
-            writer.write(time_entry)
 
-        print(writer.ipbox_hours)
+    ipbox_matcher = IPBoxMatcher(args.types)
+    if args.months:
+        months = args.months.split(',')
+    else:
+        months = ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12']
+    for month in months:
+        os.makedirs(f'{args.path}/{args.year}/{month}', exist_ok=True)
+        with MultiProjectReportWriter(f'{args.path}/{args.year}/{month}', ipbox_matcher) as writer:
+            for time_entry in api.iterate_time_entries(f'{args.year}-{month}'):
+                writer.write(time_entry)
+            print(writer.ipbox_hours)
