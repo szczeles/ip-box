@@ -21,8 +21,9 @@ class DailyReport:
         self._rows = []
         self._ipbox_hours = 0
         self._other_hours = 0
+        self._sources = set()
 
-    def add(self, row):
+    def add(self, source, row):
         self._rows.append(row)
         print(f"adding: {row}")
         hours = Decimal(row[2])
@@ -30,6 +31,8 @@ class DailyReport:
             self._ipbox_hours += hours
         else:
             self._other_hours += hours
+        self._sources.add(source)
+
 
     @property
     def ipbox(self):
@@ -38,6 +41,10 @@ class DailyReport:
     @property
     def other(self):
         return self._other_hours
+
+    @property
+    def sources(self):
+        return self._sources
 
 
 class MonthlyReport:
@@ -55,9 +62,9 @@ class MonthlyReport:
         for day in range(1, days_count + 1):
             date = f"{self._year}-{self._month:02d}-{day:02d}"
             self._report[date] = DailyReport(date)
-        for row in self._reader:
+        for source, row in self._reader:
             date = row[0]
-            self._report[date].add(row[1:])
+            self._report[date].add(source, row[1:])
 
     def __getitem__(self, day):
         key = f"{self._year}-{self._month:02d}-{day:02d}"
@@ -82,18 +89,19 @@ class ReportReader:
 
     def __iter__(self):
         for file in self._projects_files.values():
-            with open(f"{self._report_dir}/{file}", newline='') as csvfile:
+            source = f"{self._report_dir}/{file}"
+            with open(source, newline='') as csvfile:
                 reader = csv.reader(csvfile, delimiter=',')
                 next(reader) # skip header
                 for row in reader:
-                    yield row
+                    yield source, row
 
     @property
     def existing_projects(self):
         return self._projects_files.keys()
 
 
-class IPBoxWorkSheet:
+class IPBoxTimeSheet:
 
     _summary = 'Sumy'
 
@@ -137,13 +145,14 @@ class IPBoxWorkSheet:
         sheet[f'H15'].number_format = '0.00%'
 
     def _generate_month(self, sheet, month):
-        reader = ReportReader(f"{self._reports_dir}/{self._year}-{month:02d}",
+        reader = ReportReader(f"{self._reports_dir}/{self._year}/{month:02d}",
                               projects=self._projects, prefixes=self._prefixes)
         report = MonthlyReport(reader, self._year, month)
         for idx, header in enumerate(self._header):
             cell = f"{get_column_letter(idx + 1)}1"
             self._set_header(sheet, cell, header)
         sheet.column_dimensions[get_column_letter(len(self._header))].width = 20
+        sheet.column_dimensions['E'].width = 50
         sheet.column_dimensions['G'].width = 15
         _, days_count = monthrange(self._year, month)
         for day in range(1, days_count + 1):
@@ -152,6 +161,7 @@ class IPBoxWorkSheet:
             sheet[f'B{row}'] = report[day].ipbox
             sheet[f'C{row}'] = report[day].other
             sheet[f'D{row}'] = f'=B{row}+C{row}'
+            sheet[f'E{row}'] = ', '.join(report[day].sources)
         sheet['G2'] = 'Suma w miesiącu'
         sheet['H2'] = f"=SUM(D2:D{days_count + 1})"
         sheet['G3'] = 'w tym KPWI'
@@ -184,4 +194,4 @@ if __name__ == '__main__':
 
     os.makedirs(f'{args.path}/{args.year}', exist_ok=True)
 
-    IPBoxWorkSheet(args.path, int(args.year), args.projects, args.prefixes).generate()
+    IPBoxTimeSheet(args.path, int(args.year), args.projects, args.prefixes).generate()

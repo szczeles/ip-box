@@ -65,6 +65,7 @@ class HarvestAPI:
 
 
 class ReportWriter:
+
     def __init__(self, filepath, ipbox_matcher):
         self.file = open(filepath, 'w+')
         self.writer = csv.writer(self.file)
@@ -91,6 +92,7 @@ class ReportWriter:
         
 
 class MultiProjectReportWriter:
+
     def __init__(self, base_path, ipbox_matcher):
         self.base_path = base_path
         self.writers = {}
@@ -122,7 +124,8 @@ if __name__ == '__main__':
     parser.add_argument('--account', help='Account ID', required=True)
     parser.add_argument('--token', help='Personal token', required=True)
     parser.add_argument('--year', help="YYYY format", required=True)
-    parser.add_argument('--months', help='comma separated list of months in MM format', required=False)
+    parser.add_argument('--months', help='list of months in MM format', required=False,
+                        nargs='+', default=['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12'])
     parser.add_argument('--path', help='Reports path', required=True)
     parser.add_argument('--types', help='Time entry types considered as IP Box compatible',
                         nargs='+', required=False, default=['Development'])
@@ -131,11 +134,8 @@ if __name__ == '__main__':
     api = HarvestAPI(args.account, args.token)
 
     ipbox_matcher = IPBoxMatcher(args.types)
-    if args.months:
-        months = args.months.split(',')
-    else:
-        months = ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12']
-    for month in months:
+
+    for month in args.months:
         os.makedirs(f'{args.path}/{args.year}/{month}', exist_ok=True)
         with MultiProjectReportWriter(f'{args.path}/{args.year}/{month}', ipbox_matcher) as writer:
             for time_entry in api.iterate_time_entries(f'{args.year}-{month}'):

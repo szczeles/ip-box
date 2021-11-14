@@ -1,0 +1,30 @@
+common:
+  employees:
+    - Michał Lula
+  kpwi_rate: 0.8
+projects:
+  - name: Platforma Analityczna dla ING WBAA
+    description: Stworzenie platformy do analizowania i przetwarzania dużych danych oraz trenowania i serwowania modeli ML
+    startDate: 2018-09-01
+    endDate: 2021-11-05
+    harvest:
+      code: ING Bolke
+      types:
+        - Development
+    interpretationNumber: 611570/I
+    results:
+      - Data Science in a Box
+      - Generic Ingestion Pipeline
+      - Kedro project template
+      - Data Lekage Prevention Service
+      - Scheduler as a service
+    costs:
+      2019:
+        rows: [2, 18]
+      description:
+        - Sprzedaż
+        - Wydatki związane z komputerem
+
+  - name: Kopiowaczka w Allegro.pl
+    description: Rozwój narzędzia do synchronizacji danych pomiędzy HDFS a BigQuery
+    startDate: 2021-11-08
