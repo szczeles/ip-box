@@ -1,8 +1,12 @@
 #!/usr/bin/env python3
-
+import abc
 import argparse
+import datetime
+import decimal
 import os
 import csv
+import re
+
 import dateutil.parser
 from decimal import Decimal
 import yaml
@@ -21,65 +25,65 @@ class KPiRRow:
         self._row = row
 
     @property
-    def number(self):
-        return self._row[0]
+    def number(self) -> int:
+        return int(self._row[0])
 
     @property
-    def date(self):
-        return dateutil.parser.isoparse(self._row[1])
+    def date(self) -> datetime.date:
+        return dateutil.parser.isoparse(self._row[1]).date()
 
     @property
-    def invoice_number(self):
+    def invoice_number(self) -> str:
         return self._row[2]
 
     @property
-    def company_name(self):
+    def company_name(self) -> str:
         return self._row[3]
 
     @property
-    def company_address(self):
+    def company_address(self) -> str:
         return self._row[4]
 
     @property
-    def description(self):
+    def description(self) -> str:
         return self._row[5]
 
     @property
-    def sales_income(self):
+    def sales_income(self) -> decimal.Decimal:
         return as_decimal(self._row[6])
 
     @property
-    def other_income(self):
+    def other_income(self) -> decimal.Decimal:
         return as_decimal(self._row[7])
 
     @property
-    def income(self):
+    def income(self) -> decimal.Decimal:
         return as_decimal(self._row[8])
 
     @property
-    def is_income(self):
+    def is_income(self) -> bool:
         return self.income > 0
 
     @property
-    def other_cost(self):
+    def other_cost(self) -> decimal.Decimal:
         return as_decimal(self._row[12])
 
     @property
-    def cost(self):
+    def cost(self) -> decimal.Decimal:
         return as_decimal(self._row[13])
 
     @property
-    def is_cost(self):
+    def is_cost(self) -> bool:
         return self.cost > 0
 
 
-def as_decimal(value):
+def as_decimal(value: str) -> decimal.Decimal:
     return Decimal(value.replace(",", "."))
 
 
 class KPiR:
 
-    def __init__(self, year, rows):
+    def __init__(self, year: str, rows):
         self._year = year
         self._rows = [KPiRRow(row) for row in rows]
 
@@ -94,7 +98,7 @@ class KPiR:
     def filter(self, condition):
         return [row for row in self._rows if condition(row)]
 
-    def filter_year(self, year):
+    def filter_year(self, year: int):
         return self.filter(lambda row: row.date.year == year)
 
     @property
@@ -144,16 +148,101 @@ class KPiRCsvReader:
         return KPiR(self._year, [row for row in self._read_rows()])
 
 
+class Criterion:
+
+    @abc.abstractmethod
+    def matches(self, row: KPiRRow) -> bool:
+        return False
+
+
+class DescriptionCriterion(Criterion):
+
+    def __init__(self, pattern: str):
+        self._pattern = re.compile(pattern)
+
+    def matches(self, row: KPiRRow) -> bool:
+        return bool(self._pattern.match(row.description))
+
+
+class KpirNumberCriterion(Criterion):
+
+    def __init__(self, *numbers: list):
+        self._numbers = numbers
+
+    def matches(self, row: KPiRRow) -> bool:
+        return row.number in self._numbers
+
+
+class YearCriterion(Criterion):
+
+    def __init__(self, year):
+        self._year = year
+
+    def matches(self, row: KPiRRow) -> bool:
+        return self._year == row.date.year
+
+
+class StartDateCriterion(Criterion):
+
+    def __init__(self, date: datetime.date):
+        self._date = date
+
+    def matches(self, row: KPiRRow) -> bool:
+        return self._date <= row.date
+
+
+class EndDateCriterion(Criterion):
+
+    def __init__(self, date: datetime.date):
+        self._date = date
+
+    def matches(self, row: KPiRRow) -> bool:
+        return row.date <= self._date
+
+
+class AndCriterion(Criterion):
+
+    def __init__(self, *criterion):
+        if len(criterion) < 1:
+            ValueError(f"at least one criterion is expected, but got: {len(criterion)}")
+        self._criterion = criterion
+
+    def matches(self, row: KPiRRow) -> bool:
+        for criterion in self._criterion:
+            if not criterion.matches(row):
+                return False
+        return True
+
+
+class OrCriterion(Criterion):
+
+    def __init__(self, *criterion):
+        if len(criterion) < 1:
+            ValueError(f"at least one criterion is expected, but got: {len(criterion)}")
+        self._criterion = criterion
+
+    def matches(self, row: KPiRRow) -> bool:
+        for criterion in self._criterion:
+            if criterion.matches(row):
+                return True
+        return False
+
+
 class Project:
 
     def __init__(self, id, descriptor, common):
         self._id = id
         self._descriptor = descriptor
         self._common = common
+        self._criterion = self._compile_criterion()
 
     @property
     def kpwi_id(self):
         return self._id
+
+    @property
+    def kpwi_rate(self):
+        return as_decimal(self._get_property('kpwiRate'))
 
     @property
     def name(self):
@@ -185,13 +274,10 @@ class Project:
 
     @property
     def employees(self):
-        return ['Michał Lula']
-
-    def find_costs(self, kpir):
-        return kpir.filter(lambda row: row.description in self._descriptor['description'])
+        return self._get_property('employees')
 
     def is_related(self, row):
-        return row.description in self._descriptor['costs']['description']
+        return self._criterion.matches(row)
 
     def _get_property(self, name, required=True, default=None):
         if name in self._descriptor:
@@ -202,6 +288,26 @@ class Project:
             raise ValueError(f"missing property '{name}' for project {self._id} ({self._get_property('name', False)})")
         else:
             return default
+
+    def _compile_criterion(self) -> Criterion:
+        prop = 'kpir'
+        common = self._common[prop] if prop in self._common else []
+        project_criterion = list(self._descriptor[prop]) if prop in self._descriptor else []
+        project_criterion.extend(common)
+        return OrCriterion(*[self.build_criterion(**criterion) for criterion in project_criterion])
+
+    def build_criterion(self, rows=None, year=None, description=None, start_date=None, end_date=None) -> Criterion:
+        and_list = []
+        if rows:
+            and_list.append(KpirNumberCriterion(*rows))
+        if year:
+            and_list.append(YearCriterion(year))
+        if description:
+            and_list.append(DescriptionCriterion(description))
+        and_list.append(StartDateCriterion(start_date or self.start_date))
+        if end_date or self.end_date:
+            and_list.append(EndDateCriterion(end_date or self.end_date))
+        return AndCriterion(*and_list)
 
 
 class ProjectsDescriptor:
@@ -217,8 +323,8 @@ class ProjectsDescriptor:
         projects = yaml.safe_load(self._file)
         if 'projects' not in projects:
             raise ValueError("projects descriptor must define 'projects' property")
-        general = projects['general'] if 'general' in projects else {}
-        return [Project(f'KPWI-{idx+1:03d}', project, general) for idx, project in enumerate(projects['projects'])]
+        common = projects['common'] if 'common' in projects else {}
+        return [Project(f'KPWI-{idx + 1:03d}', project, common) for idx, project in enumerate(projects['projects'])]
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self._file.close()
@@ -229,9 +335,8 @@ class ProjectsDescriptor:
 
 
 class SalesRecordsReport:
-
-    _headers=dict(
-        projects = dict(
+    _headers = dict(
+        projects=dict(
             title='Projekty',
             header={
                 'A1': 'Projekt',
@@ -244,7 +349,7 @@ class SalesRecordsReport:
                 'H1': 'Prace Stworzone',
                 'I1': 'Pracownicy zaangażowany w projekt'
             }),
-        sales_records = dict(
+        sales_records=dict(
             title='Dokumenty księgowe',
             header={
                 'A1:A2': 'Data zdarzenia',
@@ -263,7 +368,7 @@ class SalesRecordsReport:
                 'L2': 'Kategoria D',
                 'M2': 'SUMA'
             }),
-        results = dict(
+        results=dict(
             title='Wyniki',
             header={
                 'A1': 'Identyfikator KPWI',
@@ -480,5 +585,3 @@ if __name__ == '__main__':
     with KPiRCsvReader(args.kpir, args.year) as reader:
         with ProjectsDescriptor(args.projects) as descriptor:
             SalesRecordsReport(reader.read(), descriptor.load()).generate(args.year, report_path, args.report_name)
-
-
