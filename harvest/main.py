@@ -6,8 +6,8 @@ from dataclasses import dataclass
 from collections import defaultdict
 import os
 import csv
-
 import requests
+import re
 
 
 @dataclass
@@ -38,7 +38,7 @@ class HarvestAPI:
         return requests.get(f'https://api.harvestapp.com/v2{url}',
                             params=params,
                             headers={
-                                'Authorization':  f'Bearer {self.token}',
+                                'Authorization': f'Bearer {self.token}',
                                 'Harvest-Account-Id': f'{self.account_id}',
                                 'User-Agent': 'IP Box time entries scraper (https://github.com/szczeles/ip-box)'
                             }).json()
@@ -46,6 +46,7 @@ class HarvestAPI:
     def iterate_time_entries(self, month):
         start_date = f'{month}-01'
         end_date = f'{month}-{calendar.monthrange(int(month[:4]), int(month[5:7]))[1]}'
+        allowed_chars_regex = "[^A-Za-z0-9- -]"
 
         entries = []
         page = 1
@@ -57,7 +58,7 @@ class HarvestAPI:
         for entry in sorted(entries, key=lambda elem: elem['spent_date']):
             yield TimeEntry(
                 date=entry['spent_date'],
-                project=entry['project']['name'],
+                project=re.sub(allowed_chars_regex, "", entry['project']['name']),
                 task=entry['task']['name'],
                 notes=entry['notes'],
                 hours=entry['hours']
@@ -88,13 +89,14 @@ class ReportWriter:
 
     def close(self):
         self.file.close()
-        
+
 
 class MultiProjectReportWriter:
     def __init__(self, base_path, ipbox_matcher):
         self.base_path = base_path
         self.writers = {}
         self.ipbox_hours = defaultdict(float)
+        self.total_hours = 0
         self._ipbox_matcher = ipbox_matcher
 
     def get_path(self, project):
@@ -104,6 +106,7 @@ class MultiProjectReportWriter:
         if not entry.project in self.writers:
             self.writers[entry.project] = ReportWriter(self.get_path(entry.project), self._ipbox_matcher)
         self.writers[entry.project].write(entry)
+        self.total_hours += entry.hours
         if self._ipbox_matcher(entry):
             self.ipbox_hours[entry.project] += entry.hours
 
@@ -135,3 +138,4 @@ if __name__ == '__main__':
             writer.write(time_entry)
 
         print(writer.ipbox_hours)
+        print("Total hours", "{:0.2f}".format(writer.total_hours))
