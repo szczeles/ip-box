@@ -2,13 +2,18 @@ common:
   employees:
     - Michał Lula
   kpwiRate: 0.8
+  costs:
+    categoryA:
+      - description: Wydatki związane z komputerem
+  incomes:
+    - description: Sprzedaż
   kpir:
     - description: Sprzedaż
     - description: Wydatki związane z komputerem
 projects:
 
   - name: Platforma Analityczna dla ING WBAA
-    description: Stworzenie platformy do analizowania i przetwarzania dużych danych oraz trenowania i serwowania modeli ML
+    description: Stworzenie platformy do analizowania i przetwarzania dużych zbiorów danych oraz trenowania i serwowania modeli ML
     startDate: 2018-09-01
     endDate: 2021-11-05
     harvest:
@@ -23,6 +28,18 @@ projects:
       - Data Lekage Prevention Service
       - Scheduler as a service
 
-  - name: Kopiowaczka w Allegro.pl
-    description: Rozwój narzędzia do synchronizacji danych pomiędzy HDFS a BigQuery
+  - name: Data Engine w Allegro.pl
+    description: |
+      Synchornizacja danych pomiędzy HDFS i BigQuery. 
+      Rozwój platformy do wspomanagania analizy danych, trenowania modeli ML i Generative AI.
+      Automatyzacja standardowych przepływów pracy.
     startDate: 2021-11-08
+    harvest:
+      code: ING Bolke
+      types:
+        - Development
+    interpretationNumber: 611570/I
+    results:
+      - Kopiowaczka
+      - Managed Shared Composer
+      - Data Console

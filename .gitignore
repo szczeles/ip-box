@@ -1,5 +1,9 @@
-.venv
+venv
 .idea 
 .DS_Store
 out
+out*
+kpir-*
+harvest/env.sh
+.env
 
