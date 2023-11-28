@@ -11,7 +11,6 @@ common:
     - description: Sprzedaż
     - description: Wydatki związane z komputerem
 projects:
-
   - name: Platforma Analityczna dla ING WBAA
     description: Stworzenie platformy do analizowania i przetwarzania dużych zbiorów danych oraz trenowania i serwowania modeli ML
     startDate: 2018-09-01
@@ -25,9 +24,8 @@ projects:
       - Data Science in a Box
       - Generic Ingestion Pipeline
       - Kedro project template
-      - Data Lekage Prevention Service
-      - Scheduler as a service
-
+      - Data Leakage Prevention Service
+      - Scheduler as a Service
   - name: Data Engine w Allegro.pl
     description: |
       Synchornizacja danych pomiędzy HDFS i BigQuery. 
@@ -43,3 +41,6 @@ projects:
       - Kopiowaczka
       - Managed Shared Composer
       - Data Console
+harvest:
+  report_dir: sources/harvest
+
