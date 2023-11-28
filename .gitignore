@@ -6,4 +6,5 @@ out*
 kpir-*
 harvest/env.sh
 .env
-
+__pycache__
+reports
