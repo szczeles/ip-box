@@ -20,6 +20,24 @@ class KpiwHarvestProjectSelector:
         return entry.task_type in self.types
 
 
+class ProjectResult:
+
+    def __init__(self, config):
+        self._config = config
+
+    @property
+    def name(self) -> str:
+        return self._config['name']
+
+    @property
+    def start_date(self):
+        return self._config['startDate']
+
+    @property
+    def end_date(self):
+        return self._config['endDate'] if 'endDate' in self._config else None
+
+
 class Project:
 
     def __init__(self, config):
@@ -34,6 +52,10 @@ class Project:
         return self._config['name']
 
     @property
+    def description(self) -> str:
+        return self._config['description']
+
+    @property
     def start_date(self) -> datetime:
         return self._config['startDate']
 
@@ -45,6 +67,15 @@ class Project:
     @property
     def employee(self) -> str:
         return self._config['employee']
+
+    @property
+    def interpretation_number(self) -> str:
+        return self._config['interpretationNumber']
+
+    @property
+    def results(self) -> list[ProjectResult]:
+        click.echo(self._config['results'])
+        return [ProjectResult(config) for config in self._config['results']]
 
     @property
     def harvest_selectors(self) -> list[KpiwHarvestProjectSelector]:

@@ -9,6 +9,7 @@ except ImportError:
 
 from harvest.commands import harvest
 from timesheet.commands import timesheet
+from sales_record.commands import sales_record
 from context import IpBoxContext
 
 
@@ -25,6 +26,8 @@ def entry_point(ctx, config):
 
 entry_point.add_command(harvest)
 entry_point.add_command(timesheet)
+entry_point.add_command(sales_record)
+
 
 if __name__ == '__main__':
     entry_point()

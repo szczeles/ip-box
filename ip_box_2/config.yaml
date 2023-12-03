@@ -16,11 +16,11 @@ projects:
           - Dev/Ops
     interpretationNumber: 611570/I
     results:
-      - Data Science in a Box
-      - Generic Ingestion Pipeline
-      - Kedro project template
-      - Data Leakage Prevention Service
-      - Scheduler as a Service
+      - name: Data Science in a Box
+      - name: Generic Ingestion Pipeline
+      - name: Kedro project template
+      - name: Data Leakage Prevention Service
+      - name: Scheduler as a Service
   - name: Data Engine w Allegro.pl
     id: KPIW-002
     description: |
