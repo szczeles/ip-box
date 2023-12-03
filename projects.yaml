@@ -31,6 +31,7 @@ projects:
       Synchornizacja danych pomiędzy HDFS i BigQuery. 
       Rozwój platformy do wspomanagania analizy danych, trenowania modeli ML i Generative AI.
       Automatyzacja standardowych przepływów pracy.
+      Stworzenie portalu do procesowania danych i zarządzania nimi.
     startDate: 2021-11-08
     harvest:
       code: Allegro - [GCP Migration] General 2022/23

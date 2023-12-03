@@ -1,0 +1,54 @@
+harvest:
+  ignore:
+    - GID OFF - Public Holiday
+    - GID OFF - Time Off
+projects:
+  - id: KPIW-001
+    name: Platforma Analityczna dla ING WBAA
+    description: Stworzenie platformy do analizowania i przetwarzania dużych zbiorów danych oraz trenowania i serwowania modeli ML
+    startDate: 2018-09-01
+    endDate: 2021-11-05
+    harvest:
+      - code: ING -  DA & MLOPS
+        types:
+          - Development
+          - Dev/Ops
+    interpretationNumber: 611570/I
+    results:
+      - Data Science in a Box
+      - Generic Ingestion Pipeline
+      - Kedro project template
+      - Data Leakage Prevention Service
+      - Scheduler as a Service
+  - name: Data Engine w Allegro.pl
+    id: KPIW-002
+    description: |
+      Synchornizacja danych pomiędzy HDFS i BigQuery. 
+      Rozwój platformy do wspomanagania analizy danych, trenowania modeli ML i Generative AI.
+      Automatyzacja standardowych przepływów pracy.
+      Stworzenie portalu do procesowania danych i zarządzania nimi.
+    startDate: 2021-11-08
+    harvest:
+      - code: "[GCP Migration] Kopiowaczka #2"
+        types:
+          - Development
+      - code: "[GCP Migration] General Q4 2021 - Q1 2022"
+        types:
+          - Development
+      - code: "[GCP Migration] General Q2 2022"
+        types:
+          - Development
+      - code: "Allegro - [GCP Migration] General 2022-23"
+        types:
+          - Development
+    interpretationNumber: 611570/I
+    results:
+      - name: Kopiowaczka
+        startDate: 2019-01-02
+        endDate: 2019-01-02
+      - name: Managed Shared Composer
+        startDate: 2019-01-02
+        endDate: 2019-01-02
+      - name: Data Console
+        startDate: 2019-01-02
+        endDate: 2019-01-02
