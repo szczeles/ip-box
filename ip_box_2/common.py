@@ -1,6 +1,7 @@
-import datetime
 import calendar
 import typing
+import csv
+import datetime
 
 
 class MonthRange:
@@ -126,3 +127,127 @@ class AggregatedTimeEntry:
     @property
     def notes(self) -> typing.Set:
         return self._notes
+
+    @classmethod
+    def from_row(cls, row):
+        return cls(datetime.datetime.strptime(row[0], '%Y-%m-%d').date(), float(row[1]), float(row[2]), row[4].split('; '))
+
+
+class CsvReader:
+
+    def __init__(self, path, delimiter=',', skip_header=True):
+        self._path = path
+        self._delimiter = delimiter
+        self._skip_header = skip_header
+
+    def __enter__(self):
+        self._file = open(self._path, newline='').__enter__()
+        self._reader = csv.reader(self._file, delimiter=self._delimiter)
+        if self._skip_header:
+            next(self._reader)
+        return self._reader
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self._file.__exit__(exc_type, exc_val, exc_tb)
+
+
+class CsvWriter:
+
+    def __init__(self, filepath, header=None):
+        self._filepath = filepath
+        self._header = header
+
+    def __enter__(self):
+        self._file = open(self._filepath, 'w+')
+        self._writer = csv.writer(self._file)
+        if self._header:
+            self._writer.writerow(self._header)
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self._file.close()
+
+    def write(self, row: list[str]):
+        self._writer.writerow(row)
+
+
+class IpClassificationDetailedWriter(CsvWriter):
+
+    def __init__(self, filepath, header=None):
+        super().__init__(filepath, header=[
+            'date',
+            'task',
+            'notes',
+            'hours',
+            'is_ip'
+        ])
+
+    def write(self, entry: ClassifiedTimeEntry):
+        super().write([
+            entry.date.strftime("%Y-%m-%d"),
+            entry.task_type,
+            entry.notes,
+            f"{float(f'{entry.hours:.2f}'):g}",
+            entry.is_ip
+        ])
+
+
+class IpClassificationAggregatedWriter(CsvWriter):
+
+    def __init__(self, filepath, format: str = "%Y-%m-%d"):
+        super().__init__(filepath, header=[
+            'day',
+            'ip',
+            'other',
+            'total',
+            'notes'
+        ])
+        self._format= format
+
+    def write(self, entry: AggregatedTimeEntry):
+        super().write([
+            entry.date.strftime(self._format),
+            f"{float(f'{entry.ip_hours:.2f}'):g}",
+            f"{float(f'{entry.other_hours:.2f}'):g}",
+            f"{float(f'{entry.total_hours:.2f}'):g}",
+            '; '.join(entry.notes)
+        ])
+
+
+class IpClassificationAggregator:
+
+    def __init__(self, filepath, dates_range: DaysRange, pattern = "%Y-%m-%d"):
+        self._filepath = filepath
+        self._aggregation_dict = {}
+        self._range = dates_range
+        self._pattern = pattern
+
+    def append(self, classified_time_entry: ClassifiedTimeEntry):
+        key = self.make_aggregation_key(classified_time_entry.date)
+        converted_entry = AggregatedTimeEntry(date=classified_time_entry.date,
+                                              ip_hours=classified_time_entry.hours if classified_time_entry.is_ip else 0,
+                                              other_hours=0 if classified_time_entry.is_ip else classified_time_entry.hours,
+                                              notes={classified_time_entry.notes} if classified_time_entry.is_ip else None)
+        merged_entry = self._aggregation_dict[key].merge(converted_entry) \
+            if key in self._aggregation_dict \
+            else converted_entry
+        self._aggregation_dict[key] = merged_entry
+
+    def make_aggregation_key(self, date: datetime.date) -> str:
+        return date.strftime(self._pattern)
+
+    def __enter__(self):
+        return self
+
+    def flush(self) -> typing.Iterable[AggregatedTimeEntry]:
+        for date in self._range:
+            key = self.make_aggregation_key(date)
+            if key in self._aggregation_dict:
+                yield self._aggregation_dict[key]
+            else:
+                yield AggregatedTimeEntry(date, ip_hours=0, other_hours=0)
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        with IpClassificationAggregatedWriter(self._filepath, self._pattern) as writer:
+            for entry in self.flush():
+                writer.write(entry)

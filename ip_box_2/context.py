@@ -43,16 +43,21 @@ class Project:
             return self._config['endDate']
 
     @property
+    def employee(self) -> str:
+        return self._config['employee']
+
+    @property
     def harvest_selectors(self) -> list[KpiwHarvestProjectSelector]:
         return [KpiwHarvestProjectSelector(config) for config in self._config.get('harvest', [])]
 
-    def has_started(self, year, month) -> bool:
-        return datetime.date(self.start_date.year, self.start_date.month, 1) <= datetime.date(year, month, 1)
+    def has_started(self, year: int, month: int = None) -> bool:
+        return datetime.date(self.start_date.year, self.start_date.month, 1) <= datetime.date(year, month or 12, 1)
 
-    def has_finished(self, year, month) -> bool:
-        return self.end_date is not None and datetime.date(self.end_date.year, self.end_date.month, 1) < datetime.date(year, month, 1)
+    def has_finished(self, year: int, month: int = None) -> bool:
+        return (self.end_date is not None and
+                datetime.date(self.end_date.year, self.end_date.month, 1) < datetime.date(year, month or 1, 1))
 
-    def is_active(self, year, month) -> bool:
+    def is_active(self, year: int, month: int = None) -> bool:
         return self.has_started(year, month) and not self.has_finished(year, month)
 
 
@@ -70,7 +75,7 @@ class IpBoxContext:
     def ignore_codes(self) -> list[str]:
         return self._config['harvest'].get('ignore', [])
 
-    def get_active_projects(self, year, month) -> list[Project]:
+    def get_active_projects(self, year: int, month: int = None) -> list[Project]:
         return [project for project in self.projects if project.is_active(year, month)]
 
 

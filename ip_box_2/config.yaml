@@ -6,6 +6,7 @@ projects:
   - id: KPIW-001
     name: Platforma Analityczna dla ING WBAA
     description: Stworzenie platformy do analizowania i przetwarzania dużych zbiorów danych oraz trenowania i serwowania modeli ML
+    employee: Michał Lula
     startDate: 2018-09-01
     endDate: 2021-11-05
     harvest:
@@ -27,6 +28,7 @@ projects:
       Rozwój platformy do wspomanagania analizy danych, trenowania modeli ML i Generative AI.
       Automatyzacja standardowych przepływów pracy.
       Stworzenie portalu do procesowania danych i zarządzania nimi.
+    employee: Michał Lula
     startDate: 2021-11-08
     harvest:
       - code: "[GCP Migration] Kopiowaczka #2"

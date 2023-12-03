@@ -1,6 +1,7 @@
 import click
-from harvest.api import HarvestAPI
 from .classify import classify
+from .summary import summary
+
 
 @click.group()
 def timesheet():
@@ -8,3 +9,4 @@ def timesheet():
 
 
 timesheet.add_command(classify)
+timesheet.add_command(summary)
