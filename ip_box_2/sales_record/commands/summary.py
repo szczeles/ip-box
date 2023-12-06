@@ -1,4 +1,6 @@
 import os
+import typing
+
 import click
 from openpyxl.workbook import Workbook
 from openpyxl.styles import Font, PatternFill
@@ -7,6 +9,8 @@ from openpyxl.utils import get_column_letter
 
 from context import pass_ip_box, IpBoxContext, Project
 from model.excel import BaseSheet
+from model.kpir import Kpir, KpirCsvReader
+from model.classification import ClassifiedKpirRow
 
 
 class Legacy:
@@ -185,7 +189,7 @@ class Legacy:
 
 
 class ProjectsSummarySheet(BaseSheet):
-
+    _title = 'Zestawienie projektów'
     _header = {
         'A1': 'Projekt',
         'B1': 'Identyfikator KPWI',
@@ -199,10 +203,8 @@ class ProjectsSummarySheet(BaseSheet):
     }
 
     def __init__(self, sheet, projects, **kwargs):
-        super().__init__(sheet, 'Zestawienie projektów', **kwargs)
+        super().__init__(sheet, self._title, **kwargs)
         self._projects = projects
-        for cell, title in self._header.items():
-            self.set_header(cell, title)
         for idx, project in enumerate(projects):
             row = idx + 2
             for (letter, value) in (
@@ -220,15 +222,125 @@ class ProjectsSummarySheet(BaseSheet):
 
 
 class SalesRecordsSummarySheet(BaseSheet):
+    _title = 'Zestawienie ksiąg'
+    _header = {
+        'A1:A2': 'Data zdarzenia',
+        'B1:B2': 'Nr dowodu księgowego',
+        'C1:C2': 'Numer w KPiR',
+        'D1:D2': 'Opis zdarzenia gospodarczego',
+        'E1:E2': 'Identyfikator KPWI',
+        'F1:H1': 'Przychód',
+        'F2': 'Zbycie KPWI',
+        'G2': 'Pozostałe',
+        'H2': 'SUMA',
+        'I1:M1': 'Koszty działalności badawczo - rozwojowej',
+        'I2': 'Kategoria A',
+        'J2': 'Kategoria B',
+        'K2': 'Kategoria C',
+        'L2': 'Kategoria D',
+        'M2': 'SUMA'
+    }
 
     def __init__(self, sheet, **kwargs):
-        super().__init__(sheet, 'Zestawienie ksiąg', **kwargs)
+        super().__init__(sheet, self._title, **kwargs)
+        self._row_idx = 0
+
+    def add(self, row: ClassifiedKpirRow):
+        if row.is_kpiw:
+            self._row_idx += 1
+            idx = self._row_idx + 2
+            self[f'A{idx}'] = row.date.isoformat()
+            self[f'B{idx}'] = row.invoice_number
+            self[f'C{idx}'] = row.number
+            self[f'D{idx}'] = row.description
+            self[f'E{idx}'] = ", ".join(row.projects_ids)
+            self[f'F{idx}'] = row.income_kpwi
+            self[f'G{idx}'] = row.income_other
+            self[f'H{idx}'] = f'=F{idx}+G{idx}'
+            self[f'I{idx}'] = row.cost_a
+            self[f'J{idx}'] = row.cost_b
+            self[f'K{idx}'] = row.cost_c
+            self[f'L{idx}'] = row.cost_d
+            self[f'M{idx}'] = f'=I{idx}+J{idx}+K{idx}+L{idx}'
+
 
 
 class ResultsSheet(BaseSheet):
+    _title = 'Wyniki'
 
-    def __init__(self, sheet, **kwargs):
-        super().__init__(sheet, 'Wyniki', **kwargs)
+    _header = {
+        'A1': 'Identyfikator KPWI',
+        'B1': 'Pole PIT IP',
+        'C1': 'Wartość',
+        'A2': 'Przychody z kwalifikowanych praw',
+        'B2': '16',
+        'A3': 'Koszty Kwalifikowane',
+        'A4': 'Koszty pośrednie',
+        'A5': 'Koszty uzyskania przychodu związane z kwalifikowanymi prawami',
+        'B5': '17',
+        'A6': 'Nexus niezaokrąglony',
+        'A7': 'Nexus',
+        'A8': 'Kwalifikowany dochód (dochody) z kwalifikowanych praw obliczony (obliczone) zgodnie z art. 30ca ust. 4 ustawy',
+        'B8': '18 / 42',
+        'A9': 'Dochód z kwalifikowanych praw niepodlegający opodatkowaniu stawką 5%, o której mowa w art. 30ca ust. 1 ustawy',
+        'B9': '19 / 20 (jeżeli ujemny)',
+        'A10': 'Podstawa opodatkowania',
+        'B10': '31',
+        'A11': 'Podstawa opodatkowania',
+        'B11': '42',
+        'A12': 'Podatek',
+        'B12': '44',
+        'A13': 'Podatek',
+        'B13': '47',
+    }
+
+    def __init__(self, sheet, projects, **kwargs):
+        super().__init__(sheet, self._title, **kwargs)
+        self._projects = projects
+        self._total_incomes = 0
+        self._total_costs = 0
+
+    def add(self, row: ClassifiedKpirRow):
+        if row.is_income:
+            self._total_incomes += row.income
+        elif row.is_cost:
+            self._total_costs += row.cost
+        else:
+            raise ValueError(f'strange row: {row}')
+
+    def flush(self):
+        index = 4
+        min_column = None
+        max_column = None
+        for project in self._projects:
+            column = get_column_letter(index)
+            self.set_header(f'{column}1', project.id)
+            self[f'{column}2'] = f"={self._sales_record_for_kpwi(column + '1', 'F')}"
+            self[f'{column}3'] = f"={self._sales_record_for_kpwi(column + '1', 'M')}"
+            self[f'{column}4'] = f"=({column}2/{self._total_incomes})*({self._total_costs}-C3)"
+            self[f'{column}5'] = f'={column}3 + {column}4'
+            self[f'{column}6'] = self._nexus_formula(column + '1')
+            self[f'{column}7'] = f'=IF({column}6>1,1,{column}6)'
+            self[f'{column}8'] = f'=({column}2-{column}5)*{column}7'
+            self[f'{column}9'] = f'=({column}2-{column}5)*(1-{column}7)'
+            self[f'{column}10'] = f'={column}8'
+            self[f'{column}11'] = f'={column}8'
+            self[f'{column}12'] = f'={column}8*0.05'
+            self[f'{column}13'] = f'={column}8*0.05'
+            if min_column is None:
+                min_column = column
+            max_column = column
+            index += 1
+        for row in [2, 3, 4, 5, 8, 9, 10, 11, 12, 13]:
+            self[f'C{row}'] = f'=SUM({min_column}{row}:{max_column}{row})'
+
+    def _nexus_formula(self, kpwi_cell):
+        nominator = '+'.join([self._sales_record_for_kpwi(kpwi_cell, cost_column) for cost_column in ['I', 'J', 'K']])
+        return f"=1.3*({nominator})/{self._sales_record_for_kpwi(kpwi_cell, 'M')}"
+
+    def _sales_record_for_kpwi(self, kpwi_cell, column):
+        sales_records_tab = SalesRecordsSummarySheet._title
+        return f"SUMIF('{sales_records_tab}'!E:E,{kpwi_cell},'{sales_records_tab}'!{column}:{column})"
 
 
 class SalesRecordsSummaryWriter:
@@ -241,13 +353,17 @@ class SalesRecordsSummaryWriter:
     def __enter__(self):
         self._workbook = Workbook()
         self._projects_sheet = ProjectsSummarySheet(self._workbook.active, self._projects)
-        self._slaes_records_sheet = SalesRecordsSummarySheet(self._workbook.create_sheet())
-        self._results_sheet = ResultsSheet(self._workbook.create_sheet())
+        self._sales_records_sheet = SalesRecordsSummarySheet(self._workbook.create_sheet())
+        self._results_sheet = ResultsSheet(self._workbook.create_sheet(), self._projects)
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        self._workbook.save(filename=self._path)
+    def write_classified_sales_record(self, row: ClassifiedKpirRow):
+        self._sales_records_sheet.add(row)
+        self._results_sheet.add(row)
 
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self._results_sheet.flush()
+        self._workbook.save(filename=self._path)
 
 
 @click.option('--year', '-y', 'years',
@@ -262,6 +378,12 @@ class SalesRecordsSummaryWriter:
               default='reports/timesheet',
               type=click.Path(exists=True, file_okay=False, dir_okay=True),
               prompt="Timesheet reports directory")
+@click.option('--kpir', '-k', 'kpir_dir',
+              help='KPiR directory path',
+              required=True,
+              default='reports/record',
+              type=click.Path(exists=True, file_okay=False, dir_okay=True),
+              prompt="KPiR reports directory")
 @click.option('--output', '-o',
               help='Record output path',
               required=True,
@@ -270,10 +392,11 @@ class SalesRecordsSummaryWriter:
               prompt="Output directory")
 @click.command()
 @pass_ip_box
-def summary(ip_box: IpBoxContext, years, timesheet_dir, output):
+def summary(ip_box: IpBoxContext, years, timesheet_dir, kpir_dir, output):
     os.makedirs(output, exist_ok=True)
     for year in years:
         projects = ip_box.get_active_projects(year)
-        with SalesRecordsSummaryWriter(projects, year,f'{output}/{year}.xlsx') as writer:
-            pass
-
+        with (SalesRecordsSummaryWriter(projects, year,f'{output}/{year}.xlsx') as writer,
+              KpirCsvReader(f'{kpir_dir}/{year}-classified.csv') as kpir_reader):
+            for row in (ClassifiedKpirRow(row) for row in kpir_reader):
+                writer.write_classified_sales_record(row)

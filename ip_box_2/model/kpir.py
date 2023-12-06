@@ -1,28 +1,20 @@
-#!/usr/bin/env python3
-import abc
-import argparse
 import datetime
-import decimal
-import os
-import csv
-import re
-
 import dateutil.parser
-from decimal import Decimal
-import yaml
-
-from openpyxl.workbook import Workbook
-from openpyxl.styles import Font, PatternFill
-from openpyxl.styles.colors import Color
-from openpyxl.utils import get_column_letter
+import decimal
+from common import CsvReader, CsvWriter
+import typing
 
 
-class KPiRRow:
+class KpirRow:
 
     def __init__(self, row):
         if not len(row) == 16:
             raise ValueError("wrong KPiR row")
         self._row = row
+
+    @property
+    def raw(self):
+        return self._row
 
     @property
     def number(self) -> int:
@@ -78,71 +70,48 @@ class KPiRRow:
 
 
 def as_decimal(value: str) -> decimal.Decimal:
-    return Decimal(value.replace(",", "."))
+    return decimal.Decimal(value.replace(",", "."))
 
 
-class KPiR:
+class KpirCsvReader(CsvReader):
 
-    def __init__(self, year: str, rows):
+    def __init__(self, path, header_lines=2, skip_footer=True):
+        super().__init__(path, header_lines=header_lines)
+        self._skip_footer = skip_footer
+
+    def __iter__(self):
+        iterator = super().__iter__()
+        last = next(iterator)
+        for row in iterator:
+            yield last
+            last = row
+        if not self._skip_footer:
+            yield last
+
+
+class Kpir:
+
+    _rows: typing.List[KpirRow]
+
+    def __init__(self, rows: typing.Iterable[KpirRow], year: int = None, month: int = None):
+        self._rows = [row for row in rows]
+        for row in self._rows:
+            if year and row.date.year != year:
+                raise ValueError(f'Rows within {year} year expected, but got {row.date.year} for row number {row.number}')
+            if month and row.date.month != month:
+                raise ValueError(
+                    f'Rows within {month} month expected, but got {row.date.month} for row number {row.number}')
+        self._rows.sort(key=lambda item: item.number)
         self._year = year
-        self._rows = [KPiRRow(row) for row in rows]
+        self._month = month
 
-    @property
-    def costs(self):
-        return self.filter(lambda row: row.is_cost)
+    def __iter__(self):
+        return self._rows.__iter__()
 
-    @property
-    def incomes(self):
-        return self.filter(lambda row: row.is_income)
-
-    def filter(self, condition):
-        return [row for row in self._rows if condition(row)]
-
-    def filter_year(self, year: int):
-        return self.filter(lambda row: row.date.year == year)
-
-    @property
-    def rows(self):
-        return self._rows
-
-    def compute_totals(self, year):
-        incomes = Decimal("0")
-        costs = Decimal("0")
-        for row in self.filter_year(year):
-            if row.is_cost:
-                costs += row.cost
-            if row.is_income:
-                incomes += row.income
-        return incomes, costs
-
-
-class KPiRCsvReader:
-
-    def __init__(self, file_path, year, with_header=True):
-        self._file_path = file_path
-        self._year = str(year)
-        self._with_header = with_header
-
-    def __enter__(self):
-        self._file = open(self._file_path, 'r')
-        self._reader = csv.reader(self._file)
-        return self
-
-    def __exit__(self, *args):
-        self._file.close()
-        return True
-
-    def _is_applicable(self, row):
-        return len(row) == 16 and row[1].startswith(self._year)
-
-    def _read_rows(self):
-        row_number = 0
-        for row in self._reader:
-            row_number += 1
-            if row_number == 1 and self._with_header:
-                continue
-            if self._is_applicable(row):
-                yield row
-
-    def read(self):
-        return KPiR(self._year, [row for row in self._read_rows()])
+    def filter(self, year, month=None, record_type=None):
+        def filtered_rows_generator():
+            for row in self:
+                if ((row.date.year == year)
+                        and (not month or row.date.month == month) and record_type):
+                        yield row
+        return Kpir(filtered_rows_generator(), year, month)

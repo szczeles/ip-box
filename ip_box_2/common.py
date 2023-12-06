@@ -135,17 +135,23 @@ class AggregatedTimeEntry:
 
 class CsvReader:
 
-    def __init__(self, path, delimiter=',', skip_header=True):
+    def __init__(self, path, delimiter=',', skip_header=True, header_lines=1):
         self._path = path
         self._delimiter = delimiter
         self._skip_header = skip_header
+        self._header_lines = header_lines
 
     def __enter__(self):
         self._file = open(self._path, newline='').__enter__()
         self._reader = csv.reader(self._file, delimiter=self._delimiter)
         if self._skip_header:
-            next(self._reader)
-        return self._reader
+            for _ in range(0, self._header_lines):
+                next(self._reader)
+        return self
+
+    def __iter__(self):
+        for row in self._reader:
+            yield row
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self._file.__exit__(exc_type, exc_val, exc_tb)

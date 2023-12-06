@@ -54,3 +54,84 @@ projects:
       - name: Data Console
         startDate: 2019-01-02
         endDate: 2019-01-02
+wages:
+  - from: 2017-03-01
+    wage: 120
+  - from: 2018-03-01
+    wage: 126
+  - from: 2019-03-01
+    wage: 152
+  - from: 2020-03-01
+    wage: 160
+  - from: 2021-03-01
+    wage: 169
+  - from: 2021-08-01
+    wage: 180
+  - from: 2022-04-01
+    wage: 220
+  - from: 2022-12-01
+    wage: 225
+  - from: 2023-04-01
+    wage: 250
+ip_box_records:
+  incomes:
+    - companyName:
+        equals: GETINDATA ADAM KAWA, PIOTR KREWSKI S.C.
+    - companyName:
+        equals: GetInData Sp. z o. o. Sp. k.
+    - companyName:
+        equals: GETINDATA Sp. z o.o. Sp. komandytowa
+    - companyName:
+        equals: GETINDATA POLAND Sp. z o.o.
+  costs:
+    - description:
+        contains: Fundusz Pracy
+      category: 'A'
+    - description:
+        contains: Składka zdrowotna
+      category: 'A'
+    - description:
+        startsWith: Zakup paliwa
+      category: 'A'
+    - description:
+        startsWith: Paliwo
+      category: 'A'
+    - description:
+        startsWith: Koszty pojazdu
+      category: 'A'
+    - description:
+        startsWith: akumulator
+      category: 'A'
+    - description:
+        contains: leasing
+      category: 'A'
+    - description:
+        startsWith: polisa OC
+      category: 'A'
+    - description:
+        startsWith: ubezpieczenie komunikacyjne
+      category: 'A'
+    - description:
+        startsWith: Wydatki związane z komputerem
+      category: 'A'
+    - description:
+        startsWith: Kabel USB c
+      category: 'A'
+    - description:
+        startsWith: WXAD10 adapter strumieniowy
+      category: 'A'
+    - description:
+        startsWith: dysk
+      category: 'A'
+    - description:
+        startsWith: Artykuły biurowe
+      category: 'A'
+    - description:
+        startsWith: Wyposażenie biura
+      category: 'A'
+    - description:
+        startsWith: Satechi
+      category: 'A'
+    - description:
+        startsWith: Laptop
+      category: 'A'

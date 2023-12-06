@@ -1,6 +1,9 @@
 import datetime
+
 import click
 from common import TimeEntry
+from model.kpir import KpirRow
+from model.classification import SalesRecordsClassifier, KpiwClassificationResult
 
 
 class KpiwHarvestProjectSelector:
@@ -74,7 +77,6 @@ class Project:
 
     @property
     def results(self) -> list[ProjectResult]:
-        click.echo(self._config['results'])
         return [ProjectResult(config) for config in self._config['results']]
 
     @property
@@ -97,6 +99,8 @@ class IpBoxContext:
     def __init__(self, config):
         self._config = config
         self._projects = [Project(project) for project in config['projects']]
+        self._wages = [(wage['from'], wage['wage']) for wage in config['wages']]
+        self._record_classifier = SalesRecordsClassifier(config['ip_box_records'])
 
     @property
     def projects(self) -> list[Project]:
@@ -108,6 +112,21 @@ class IpBoxContext:
 
     def get_active_projects(self, year: int, month: int = None) -> list[Project]:
         return [project for project in self.projects if project.is_active(year, month)]
+
+    def get_wage(self, date: datetime.date):
+        result = None
+        for (start_date, wage) in self._wages:
+            if date >= start_date:
+                result = wage
+            else:
+                break
+        if not result:
+            raise Exception('date is before employment date')
+        return result
+
+    def classify_sales_record(self, row: KpirRow) -> KpiwClassificationResult:
+        result = self._record_classifier.matches(row)
+        return KpiwClassificationResult(self.get_active_projects(row.date.year, row.date.month), result)
 
 
 pass_ip_box = click.make_pass_decorator(IpBoxContext)
