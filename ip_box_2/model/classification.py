@@ -215,19 +215,6 @@ class ClassifiedKpirRow(KpirRow):
         return bool(self._row[16])
 
     @property
-    def income_kpwi(self):
-        if self.is_income and self.is_kpiw:
-            # TODO: compute rate based on timesheet
-            return self.income * decimal.Decimal(0.8)
-        return 0
-
-    @property
-    def income_other(self):
-        if self.is_income and self.is_kpiw:
-            return self.income - self.income_kpwi
-        return 0
-
-    @property
     def cost_a(self):
         return self._get_kpiw_cost('A')
 
