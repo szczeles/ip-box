@@ -242,6 +242,16 @@ class ResultsSheet(BaseSheet):
         'A9': 'Dochód z kwalifikowanych praw niepodlegający opodatkowaniu stawką 5%, o której mowa w art. 30ca ust. 1 ustawy',
         'B9': '19 / 20 (jeżeli ujemny)',
         'A10': 'Podstawa opodatkowania',
+        'A14': 'Łączny Przychód',
+        'A15': 'Łączne koszty',
+        'A16': 'Łączny dochód',
+        'A17': 'Odliczenia od dochodu',
+        'A18': 'Dochód po odczliczeniach',
+        'A19': 'Dochód nie związany z KPWI',
+        'A20': 'Podatek nie związany z KPWI',
+        'A21': 'Podatek Łącznie',
+        'A22': 'Podatek Pierwotny',
+        'A23': 'Nadpłata',
         'B10': '31',
         'A11': 'Podstawa opodatkowania',
         'B11': '42',
@@ -263,6 +273,7 @@ class ResultsSheet(BaseSheet):
         self._projects = projects
         self._total_incomes = 0
         self._total_costs = 0
+        self._total_income_reduction = 0
 
     def add(self, row: ClassifiedKpirRow):
         if row.is_income:
@@ -276,13 +287,23 @@ class ResultsSheet(BaseSheet):
         index = 4
         min_column = None
         max_column = None
+        self['C14'] = self._total_incomes
+        self['C15'] = self._total_costs
+        self['C16'] = '=C14-C15'
+        self['C17'] = self._total_income_reduction
+        self['C18'] = '=C16-C17'
+        self['C19'] = '=C18-C8'
+        self['C20'] = '=C19*0.19'
+        self['C21'] = '=C13+C20'
+        self['C22'] = '=C18*0.19'
+        self['C23'] = '=C22-C21'
         for project in self._projects:
             column = get_column_letter(index)
             self.set_header(f'{column}1', project.id)
             self.sheet.column_dimensions[column].width = self._kpiw_column_width
             self[f'{column}2'] = f"={self._sales_record_for_kpwi(column + '1', 'F')}"
             self[f'{column}3'] = f"={self._sales_record_for_kpwi(column + '1', 'M')}"
-            self[f'{column}4'] = f"=({column}2/{self._total_incomes})*({self._total_costs}-C3)"
+            self[f'{column}4'] = f"=({column}2/C14)*(C15-C3)"
             self[f'{column}5'] = f'={column}3 + {column}4'
             self[f'{column}6'] = self._nexus_formula(column + '1')
             self[f'{column}7'] = f'=IF({column}6>1,1,{column}6)'
